@@ -28,7 +28,7 @@ from modules import lin_inverse
 
 if __name__ == "__main__":
     nonlin = "wire2d"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
-    niters = 1  # Number of SGD iterations
+    niters = 5000  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate.
 
     nmeas = 100  # Number of CT measurement

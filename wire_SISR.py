@@ -33,7 +33,7 @@ models = importlib.reload(models)
 
 if __name__ == "__main__":
     nonlin = "wire"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
-    niters = 1  # Number of SGD iterations
+    niters = 2000  # Number of SGD iterations
     learning_rate = 1e-2  # Learning rate.
 
     # WIRE works best at 5e-3 to 2e-2, Gauss and SIREN at 1e-3 - 2e-3,

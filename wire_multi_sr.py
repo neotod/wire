@@ -38,7 +38,7 @@ from modules import utils
 
 if __name__ == "__main__":
     nonlin = "wire"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
-    niters = 1  # Number of SGD iterations
+    niters = 2000  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate.
 
     # Use a high learning rate (such as 5e-3) for WIRE, moderate (1e-3) for

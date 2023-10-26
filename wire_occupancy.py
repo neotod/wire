@@ -31,7 +31,7 @@ from modules import volutils
 
 if __name__ == "__main__":
     nonlin = "wire"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
-    niters = 1  # Number of SGD iterations
+    niters = 200  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate
     expname = "thai_statue"  # Volume to load
     scale = 1.0  # Run at lower scales to testing
