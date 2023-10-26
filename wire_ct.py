@@ -5,6 +5,9 @@ import os
 import sys
 import tqdm
 from scipy import io
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import wandb
 import numpy as np
@@ -25,7 +28,7 @@ from modules import lin_inverse
 
 if __name__ == "__main__":
     nonlin = "wire2d"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
-    niters = 5000  # Number of SGD iterations
+    niters = 1  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate.
 
     nmeas = 100  # Number of CT measurement
@@ -54,8 +57,11 @@ if __name__ == "__main__":
     [H, W] = img.shape
     imten = torch.tensor(img)[None, None, ...].cuda()
 
-    run_name = f'wire_ct__{str(time.time()).replace(".", "_")}'
-    xp = wandb.init(name=run_name, project="pracnet", resume="allow", anonymous="allow")
+    if os.getenv("WANDB_LOG") in ["true", "True", True]:
+        run_name = f'wire_ct__{str(time.time()).replace(".", "_")}'
+        xp = wandb.init(
+            name=run_name, project="pracnet", resume="allow", anonymous="allow"
+        )
 
     # Create model
     if nonlin == "posenc":
@@ -136,7 +142,8 @@ if __name__ == "__main__":
             psnr2 = utils.psnr(img, img_estim_cpu)
             ssim2 = ssim_func(img, img_estim_cpu)
 
-            xp.log({"loss": loss, "psnr": psnr2, "ssim": ssim2})
+            if os.getenv("WANDB_LOG") in ["true", "True", True]:
+                xp.log({"loss": loss, "psnr": psnr2, "ssim": ssim2})
 
     img_estim_cpu = best_im.detach().cpu().squeeze().numpy()
 
@@ -146,10 +153,27 @@ if __name__ == "__main__":
         "sinogram": sinogram,
         "gt": img,
     }
-    os.makedirs("results/ct", exist_ok=True)
-    io.savemat("results/ct/%s_%d.mat" % (nonlin, nmeas), mdict)
+    os.makedirs(os.path.join(os.getenv("RESULTS_SAVE_PATH"), "ct"), exist_ok=True)
+    io.savemat(
+        os.path.join(
+            os.getenv("RESULTS_SAVE_PATH"),
+            "ct",
+            "%s_%d.mat" % (nonlin, nmeas),
+        ),
+        mdict,
+    )
 
     psnr2 = utils.psnr(img, img_estim_cpu)
     ssim2 = ssim_func(img, img_estim_cpu)
 
     print("PSNR: %.1f dB | SSIM: %.2f" % (psnr2, ssim2))
+
+    # saving the model
+    os.makedirs(
+        os.path.join(os.getenv("MODEL_SAVE_PATH"), "ct"),
+        exist_ok=True,
+    )
+    torch.save(
+        model.state_dict(),
+        os.path.join(os.getenv("MODEL_SAVE_PATH"), "ct", f"{nonlin}_{nmeas}.pth"),
+    )

@@ -5,6 +5,9 @@ import sys
 from tqdm import tqdm
 import importlib
 import time
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import numpy as np
 from scipy import io
@@ -27,7 +30,7 @@ from modules import utils
 
 if __name__ == "__main__":
     nonlin = "wire"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
-    niters = 2000  # Number of SGD iterations
+    niters = 1  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate.
 
     # WIRE works best at 5e-3 to 2e-2, Gauss and SIREN at 1e-3 - 2e-3,
@@ -52,10 +55,11 @@ if __name__ == "__main__":
     im = cv2.resize(im, None, fx=1 / 2, fy=1 / 2, interpolation=cv2.INTER_AREA)
     H, W, _ = im.shape
 
-    run_name = f'wire_image_denoise__{str(time.time()).replace(".", "_")}'
-    xp = wandb.init(
-        name=run_name, project="pracnet", resume="allow", anonymous="allow"
-    )
+    if os.getenv("WANDB_LOG") in ["true", "True", True]:
+        run_name = f'wire_image_denoise__{str(time.time()).replace(".", "_")}'
+        xp = wandb.init(
+            name=run_name, project="pracnet", resume="allow", anonymous="allow"
+        )
 
     # Create a noisy image
     im_noisy = utils.measure(im, noise_snr, tau)
@@ -150,7 +154,8 @@ if __name__ == "__main__":
             tbar.set_description("%.1f" % psnrval)
             tbar.refresh()
 
-            xp.log({"loss": loss, "psnr": psnrval})
+            if os.getenv("WANDB_LOG") in ["true", "True", True]:
+                xp.log({"loss": loss, "psnr": psnrval})
 
         scheduler.step()
 
@@ -175,7 +180,31 @@ if __name__ == "__main__":
         "time_array": time_array.detach().cpu().numpy(),
     }
 
-    os.makedirs("results/denoising", exist_ok=True)
-    io.savemat("results/denoising/%s.mat" % nonlin, mdict)
+    os.makedirs(
+        os.path.join(os.getenv("RESULTS_SAVE_PATH"), "denoising"),
+        exist_ok=True,
+    )
+    io.savemat(
+        os.path.join(
+            os.getenv("RESULTS_SAVE_PATH"),
+            "denoising",
+            "%s.mat" % nonlin,
+        ),
+        mdict,
+    )
 
     print("Best PSNR: %.2f dB" % utils.psnr(im, best_img))
+
+    # save model
+    os.makedirs(
+        os.path.join(os.getenv("MODEL_SAVE_PATH"), "denoising"),
+        exist_ok=True,
+    )
+    torch.save(
+        model.state_dict(),
+        os.path.join(
+            os.getenv("MODEL_SAVE_PATH"),
+            "denoising",
+            "%s.pth" % nonlin,
+        ),
+    )

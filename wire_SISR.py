@@ -6,12 +6,15 @@ from tqdm import tqdm
 import importlib
 import time
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import numpy as np
 from scipy import io
 from skimage.metrics import structural_similarity as ssim_func
 import wandb
 
-import lpips
 
 import matplotlib.pyplot as plt
 import cv2
@@ -30,7 +33,7 @@ models = importlib.reload(models)
 
 if __name__ == "__main__":
     nonlin = "wire"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
-    niters = 2000  # Number of SGD iterations
+    niters = 1  # Number of SGD iterations
     learning_rate = 1e-2  # Learning rate.
 
     # WIRE works best at 5e-3 to 2e-2, Gauss and SIREN at 1e-3 - 2e-3,
@@ -47,8 +50,11 @@ if __name__ == "__main__":
     hidden_layers = 2  # Number of hidden layers in the MLP
     hidden_features = 256  # Number of hidden units per layer
 
-    run_name = f'wire_SISR__{str(time.time()).replace(".", "_")}'
-    xp = wandb.init(name=run_name, project="pracnet", resume="allow", anonymous="allow")
+    if os.getenv("WANDB_LOG") in ["true", "True", True]:
+        run_name = f'wire_SISR__{str(time.time()).replace(".", "_")}'
+        xp = wandb.init(
+            name=run_name, project="pracnet", resume="allow", anonymous="allow"
+        )
 
     # Read image
     im = utils.normalize(plt.imread("data/butterfly.png").astype(np.float32), True)
@@ -160,7 +166,8 @@ if __name__ == "__main__":
             best_mse = mse_array[epoch]
             best_img = imrec
 
-        xp.log({"loss": loss, "mse": mse_array[epoch], "ssim": ssim_array[epoch]})
+        if os.getenv("WANDB_LOG") in ["true", "True", True]:
+            xp.log({"loss": loss, "mse": mse_array[epoch], "ssim": ssim_array[epoch]})
 
     if posencode:
         nonlin = "posenc"
@@ -173,8 +180,8 @@ if __name__ == "__main__":
         "ssim_array": mse_array.detach().cpu().numpy(),
     }
 
-    os.makedirs("results/sisr", exist_ok=True)
-    io.savemat("results/sisr/%s_SR_%d.mat" % (nonlin, scale), mdict)
+    os.makedirs(os.path.join("results", "sisr"), exist_ok=True)
+    io.savemat(os.path.join("results", "sisr", "%s_SR_%d.mat" % (nonlin, scale)), mdict)
 
     print(
         -10 * torch.log10(best_mse),
@@ -183,7 +190,7 @@ if __name__ == "__main__":
     )
 
     plt.imsave(
-        "results/SR_diff_%s.png" % nonlin,
+        os.path.join("results", "SR_diff_%s.png" % nonlin),
         np.clip(abs(im - best_img), 0, 1),
         vmin=0.0,
         vmax=0.1,
@@ -191,3 +198,15 @@ if __name__ == "__main__":
 
     plt.plot(-10 * torch.log10(mse_array).detach().cpu().numpy())
     plt.show()
+
+    # save the model
+    os.makedirs(
+        os.path.join(os.getenv("MODEL_SAVE_PATH"), "sisr"),
+        exist_ok=True,
+    )
+    torch.save(
+        model.state_dict(),
+        os.path.join(
+            os.getenv("MODEL_SAVE_PATH"), "sisr", "%s_SR_%d.pth" % (nonlin, scale)
+        ),
+    )

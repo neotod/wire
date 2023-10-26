@@ -10,6 +10,10 @@ from tqdm import tqdm
 import copy
 import time
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import numpy as np
 from scipy import linalg
 from scipy import interpolate
@@ -34,7 +38,7 @@ from modules import utils
 
 if __name__ == "__main__":
     nonlin = "wire"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
-    niters = 2000  # Number of SGD iterations
+    niters = 1  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate.
 
     # Use a high learning rate (such as 5e-3) for WIRE, moderate (1e-3) for
@@ -67,8 +71,11 @@ if __name__ == "__main__":
     hidden_layers = 2  # Number of hidden layers in the MLP
     hidden_features = 256  # Number of hidden units per layer
 
-    run_name = f'wire_multi_sr__{str(time.time()).replace(".", "_")}'
-    xp = wandb.init(name=run_name, project="pracnet", resume="allow", anonymous="allow")
+    if os.getenv("WANDB_LOG") in ["true", "True", True]:
+        run_name = f'wire_multi_sr__{str(time.time()).replace(".", "_")}'
+        xp = wandb.init(
+            name=run_name, project="pracnet", resume="allow", anonymous="allow"
+        )
 
     # Read image
     im = cv2.resize(
@@ -237,7 +244,8 @@ if __name__ == "__main__":
 
         psnr_array[epoch] = snrval
 
-        xp.log({"loss": loss, "psnr": snrval, "ssim": ssimval})
+        if os.getenv("WANDB_LOG") in ["true", "True", True]:
+            xp.log({"loss": loss, "psnr": snrval, "ssim": ssimval})
 
         # if sys.platform == 'win32':
         #     cv2.imshow('GT', im[..., ::-1])
@@ -253,8 +261,15 @@ if __name__ == "__main__":
     snrval = utils.psnr(im, img_full)
     ssimval = ssim_func(im, img_full, multichannel=True)
 
-    os.makedirs("results/multi_SR", exist_ok=True)
-    filename = "results/multi_SR/%dx_%dimages_%s" % (scale_sr, nimg, nonlin)
+    os.makedirs(
+        os.path.join(os.getenv("RESULTS_SAVE_PATH"), "multi_SR"),
+        exist_ok=True,
+    )
+    filename = os.path.join(
+        os.getenv("RESULTS_SAVE_PATH"),
+        "multi_SR",
+        "%dx_%dimages_%s" % (scale_sr, nimg, nonlin),
+    )
 
     if use_gt:
         filename += "_oracle_reg"
@@ -270,3 +285,13 @@ if __name__ == "__main__":
         "rec_interp": im_interp,
     }
     io.savemat("%s.mat" % filename, mdict)
+
+    # saving the model
+    os.makedirs(
+        os.path.join(os.getenv("MODEL_SAVE_PATH"), "multi_sr"),
+        exist_ok=True,
+    )
+    torch.save(
+        model.state_dict(),
+        os.path.join(os.getenv("MODEL_SAVE_PATH"), "multi_sr", f"{nonlin}.pth"),
+    )

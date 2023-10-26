@@ -9,6 +9,9 @@ import time
 import pdb
 import copy
 import wandb
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import numpy as np
 from scipy import io
@@ -28,7 +31,7 @@ from modules import volutils
 
 if __name__ == "__main__":
     nonlin = "wire"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
-    niters = 200  # Number of SGD iterations
+    niters = 1  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate
     expname = "thai_statue"  # Volume to load
     scale = 1.0  # Run at lower scales to testing
@@ -44,8 +47,11 @@ if __name__ == "__main__":
     hidden_features = 256  # Number of hidden units per layer
     maxpoints = int(2e5)  # Batch size
 
-    run_name = f'wire_occupancy__{str(time.time()).replace(".", "_")}'
-    xp = wandb.init(name=run_name, project="pracnet", resume="allow", anonymous="allow")
+    if os.getenv("WANDB_LOG") in ["true", "True", True]:
+        run_name = f'wire_occupancy__{str(time.time()).replace(".", "_")}'
+        xp = wandb.init(
+            name=run_name, project="pracnet", resume="allow", anonymous="allow"
+        )
 
     if expname == "thai_statue":
         occupancy = True
@@ -141,12 +147,13 @@ if __name__ == "__main__":
         else:
             mse_array[idx] = train_loss / nchunks
 
-        xp.log(
-            {
-                "loss": train_loss / nchunks,
-                "iou": volutils.get_IoU(im_estim, imten, mcubes_thres),
-            }
-        )
+        if os.getenv("WANDB_LOG") in ["true", "True", True]:
+            xp.log(
+                {
+                    "loss": train_loss / nchunks,
+                    "iou": volutils.get_IoU(im_estim, imten, mcubes_thres),
+                }
+            )
 
         time_array[idx] = time.time()
         scheduler.step()
@@ -174,7 +181,10 @@ if __name__ == "__main__":
         nonlin = "posenc"
 
     # Save data
-    os.makedirs("results/%s" % expname, exist_ok=True)
+    os.makedirs(
+        os.path.join(os.getenv("RESULTS_SAVE_PATH"), "%s" % expname),
+        exist_ok=True,
+    )
 
     (indices,) = np.where(time_array > 0)
     time_array = time_array[indices]
@@ -185,11 +195,17 @@ if __name__ == "__main__":
         "time_array": time_array - time_array[0],
         "nparams": utils.count_parameters(model),
     }
-    io.savemat("results/%s/%s.mat" % (expname, nonlin), mdict)
+
+    io.savemat(
+        os.path.join(os.getenv("RESULTS_SAVE_PATH"), "%s" % expname, "%s.mat" % nonlin),
+        mdict,
+    )
 
     # Generate a mesh with marching cubes if it is an occupancy volume
     if occupancy:
-        savename = "results/%s/%s.dae" % (expname, nonlin)
+        savename = os.path.join(
+            os.getenv("RESULTS_SAVE_PATH"), "%s" % expname, "%s.mat" % nonlin
+        )
         volutils.march_and_save(best_img, mcubes_thres, savename, True)
 
     print("Total time %.2f minutes" % (total_time / 60))
@@ -198,3 +214,17 @@ if __name__ == "__main__":
     else:
         print("PSNR: ", utils.psnr(im, best_img))
     print("Total pararmeters: %.2f million" % (nparams / 1e6))
+
+    # save the model
+    os.makedirs(
+        os.path.join(os.getenv("MODEL_SAVE_PATH"), "occupancy"),
+        exist_ok=True,
+    )
+    torch.save(
+        model.state_dict(),
+        os.path.join(
+            os.getenv("MODEL_SAVE_PATH"),
+            "occupancy",
+            "%s.pth" % nonlin,
+        ),
+    )
