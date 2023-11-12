@@ -12,6 +12,7 @@ load_dotenv()
 import numpy as np
 from scipy import io
 import wandb
+import argparse
 
 import matplotlib.pyplot as plt
 
@@ -25,11 +26,23 @@ import torch.nn
 from torch.optim.lr_scheduler import LambdaLR
 from pytorch_msssim import ssim
 
+
 from modules import models
 from modules import utils
 
 if __name__ == "__main__":
-    nonlin = "wire"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
+    parser = argparse.ArgumentParser(description="Image reconstruction parameters")
+    parser.add_argument(
+        "-n",
+        "--nonlinearity",
+        choices=["wire", "siren", "mfn", "relu", "posenc", "gauss"],
+        type=str,
+        help="Name of nonlinearity",
+        default="wire",
+    )
+    args = parser.parse_args()
+    nonlin = args.nonlin
+
     niters = 2000  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate.
 
@@ -51,12 +64,15 @@ if __name__ == "__main__":
 
     # Read image and scale. A scale of 0.5 for parrot image ensures that it
     # fits in a 12GB GPU
-    im = utils.normalize(plt.imread("data/parrot.png").astype(np.float32), True)
+    img_name_ext = "parrot.png"
+    img_path = os.path.join("data", img_name_ext)
+
+    im = utils.normalize(plt.imread(img_path).astype(np.float32), True)
     im = cv2.resize(im, None, fx=1 / 2, fy=1 / 2, interpolation=cv2.INTER_AREA)
     H, W, _ = im.shape
 
     if os.getenv("WANDB_LOG") in ["true", "True", True]:
-        run_name = f'wire_image_denoise__{str(time.time()).replace(".", "_")}'
+        run_name = f'{nonlin}_image_denoise__{str(time.time()).replace(".", "_")}'
         xp = wandb.init(
             name=run_name, project="pracnet", resume="allow", anonymous="allow"
         )
@@ -180,6 +196,8 @@ if __name__ == "__main__":
         "time_array": time_array.detach().cpu().numpy(),
     }
 
+    img_name = img_name_ext.split('.')[0]
+
     os.makedirs(
         os.path.join(os.getenv("RESULTS_SAVE_PATH"), "denoising"),
         exist_ok=True,
@@ -188,7 +206,7 @@ if __name__ == "__main__":
         os.path.join(
             os.getenv("RESULTS_SAVE_PATH"),
             "denoising",
-            "%s.mat" % nonlin,
+            f"{nonlin}_{img_name}.mat",
         ),
         mdict,
     )
@@ -205,6 +223,6 @@ if __name__ == "__main__":
         os.path.join(
             os.getenv("MODEL_SAVE_PATH"),
             "denoising",
-            "%s.pth" % nonlin,
+            f"{nonlin}_{img_name}.pth",
         ),
     )
