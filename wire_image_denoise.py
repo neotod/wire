@@ -41,7 +41,7 @@ if __name__ == "__main__":
         default="wire",
     )
     args = parser.parse_args()
-    nonlin = args.nonlin
+    nonlin = args.nonlinearity
 
     niters = 2000  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate.
