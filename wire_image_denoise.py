@@ -227,3 +227,10 @@ if __name__ == "__main__":
             f"{nonlin}_{img_name}.pth",
         ),
     )
+
+    plt.imshow(best_img)
+    plt.savefig(
+        os.path.join(
+            os.getenv("RESULTS_SAVE_PATH"), "denoising", f"{nonlin}_{img_name}.png"
+        )
+    )
