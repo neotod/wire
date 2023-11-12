@@ -65,6 +65,7 @@ if __name__ == "__main__":
     # Read image and scale. A scale of 0.5 for parrot image ensures that it
     # fits in a 12GB GPU
     img_name_ext = "parrot.png"
+    img_name = img_name_ext.split('.')[0]
     img_path = os.path.join("data", img_name_ext)
 
     im = utils.normalize(plt.imread(img_path).astype(np.float32), True)
@@ -72,7 +73,7 @@ if __name__ == "__main__":
     H, W, _ = im.shape
 
     if os.getenv("WANDB_LOG") in ["true", "True", True]:
-        run_name = f'{nonlin}_image_denoise__{str(time.time()).replace(".", "_")}'
+        run_name = f'{nonlin}_{img_name}_image_denoise__{str(time.time()).replace(".", "_")}'
         xp = wandb.init(
             name=run_name, project="pracnet", resume="allow", anonymous="allow"
         )
