@@ -31,13 +31,25 @@ import cv2
 import torch
 import torch.nn
 from torch.utils.data import DataLoader
+import argparse
 
 from modules import models
 from modules import motion
 from modules import utils
 
 if __name__ == "__main__":
-    nonlin = "wire"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
+    parser = argparse.ArgumentParser(description="Multi SR parameters")
+    parser.add_argument(
+        "-n",
+        "--nonlinearity",
+        choices=["wire", "siren", "mfn", "relu", "posenc", "gauss"],
+        type=str,
+        help="Name of nonlinearity",
+        default="wire",
+    )
+    args = parser.parse_args()
+    nonlin = args.nonlinearity
+
     niters = 2000  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate.
 
@@ -77,9 +89,12 @@ if __name__ == "__main__":
             name=run_name, project="pracnet", resume="allow", anonymous="allow"
         )
 
+    image_name_ext = "kodak.png"
+    image_name = image_name_ext.split(".")[0]
+    image_path = os.path.join("data", image_name)
     # Read image
     im = cv2.resize(
-        plt.imread("data/kodak.png"),
+        plt.imread(image_path),
         None,
         fx=scaling,
         fy=scaling,
@@ -206,6 +221,7 @@ if __name__ == "__main__":
     tbar = tqdm(range(niters))
     for epoch in tbar:
         train_mse = 0
+        train_loss = cnt = 0
         for idx, data in enumerate(dataloader):
             coords, gt, mask = data
             coords, gt, mask = coords.cuda(), gt.cuda(), mask.cuda()
@@ -216,6 +232,7 @@ if __name__ == "__main__":
             mmse_loss = criterion_mmse(output * mask, gt * mask)
 
             loss = mmse_loss
+            train_loss += loss.item()
 
             if mmse_loss < best_loss:
                 best_loss = mmse_loss
@@ -227,6 +244,8 @@ if __name__ == "__main__":
             optimizer.step()
 
             train_mse += mmse_loss.item()
+
+            cnt += 1
 
         mse_array[epoch] = train_mse
 
@@ -245,7 +264,7 @@ if __name__ == "__main__":
         psnr_array[epoch] = snrval
 
         if os.getenv("WANDB_LOG") in ["true", "True", True]:
-            xp.log({"loss": loss, "psnr": snrval, "ssim": ssimval})
+            xp.log({"loss": train_loss / cnt, "psnr": snrval, "ssim": ssimval})
 
         # if sys.platform == 'win32':
         #     cv2.imshow('GT', im[..., ::-1])
@@ -294,4 +313,19 @@ if __name__ == "__main__":
     torch.save(
         model.state_dict(),
         os.path.join(os.getenv("MODEL_SAVE_PATH"), "multi_sr", f"{nonlin}.pth"),
+    )
+
+    # saving the result as image
+    plt.imshow(img_full)
+    plt.savefig(
+        os.path.join(os.getenv("RESULTS_SAVE_PATH"), "multi_sr", f"{nonlin}.png")
+    )
+
+    print("saving the image on WANDB")
+    wandb.log(
+        {
+            f"{nonlin}_multi_sr": [
+                wandb.Image(img_full, caption="Multi resolution image.")
+            ]
+        }
     )

@@ -65,7 +65,7 @@ if __name__ == "__main__":
     # Read image and scale. A scale of 0.5 for parrot image ensures that it
     # fits in a 12GB GPU
     img_name_ext = "parrot.png"
-    img_name = img_name_ext.split('.')[0]
+    img_name = img_name_ext.split(".")[0]
     img_path = os.path.join("data", img_name_ext)
 
     im = utils.normalize(plt.imread(img_path).astype(np.float32), True)
@@ -73,7 +73,9 @@ if __name__ == "__main__":
     H, W, _ = im.shape
 
     if os.getenv("WANDB_LOG") in ["true", "True", True]:
-        run_name = f'{nonlin}_{img_name}_image_denoise__{str(time.time()).replace(".", "_")}'
+        run_name = (
+            f'{nonlin}_{img_name}_image_denoise__{str(time.time()).replace(".", "_")}'
+        )
         xp = wandb.init(
             name=run_name, project="pracnet", resume="allow", anonymous="allow"
         )
@@ -144,6 +146,7 @@ if __name__ == "__main__":
     for epoch in tbar:
         indices = torch.randperm(H * W)
 
+        train_loss = cnt = 0
         for b_idx in range(0, H * W, maxpoints):
             b_indices = indices[b_idx : min(H * W, b_idx + maxpoints)]
             b_coords = coords[:, b_indices, ...].cuda()
@@ -154,10 +157,13 @@ if __name__ == "__main__":
                 rec[:, b_indices, :] = pixelvalues
 
             loss = ((pixelvalues - gt_noisy[:, b_indices, :]) ** 2).mean()
+            train_loss += loss.item()
 
             optim.zero_grad()
             loss.backward()
             optim.step()
+
+            cnt += 1
 
         time_array[epoch] = time.time() - init_time
 
@@ -172,7 +178,7 @@ if __name__ == "__main__":
             tbar.refresh()
 
             if os.getenv("WANDB_LOG") in ["true", "True", True]:
-                xp.log({"loss": loss, "psnr": psnrval})
+                xp.log({"loss": train_loss / cnt, "psnr": psnrval})
 
         scheduler.step()
 
@@ -197,7 +203,7 @@ if __name__ == "__main__":
         "time_array": time_array.detach().cpu().numpy(),
     }
 
-    img_name = img_name_ext.split('.')[0]
+    img_name = img_name_ext.split(".")[0]
 
     os.makedirs(
         os.path.join(os.getenv("RESULTS_SAVE_PATH"), "denoising"),
@@ -233,4 +239,13 @@ if __name__ == "__main__":
         os.path.join(
             os.getenv("RESULTS_SAVE_PATH"), "denoising", f"{nonlin}_{img_name}.png"
         )
+    )
+
+    print("saving the image on WANDB")
+    wandb.log(
+        {
+            f"{nonlin}_image_reconst": [
+                wandb.Image(best_img, caption="Reconstructed image.")
+            ]
+        }
     )

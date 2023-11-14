@@ -13,6 +13,7 @@ import wandb
 import numpy as np
 
 import cv2
+import argparse
 import matplotlib.pyplot as plt
 
 plt.gray()
@@ -27,7 +28,18 @@ from modules import utils
 from modules import lin_inverse
 
 if __name__ == "__main__":
-    nonlin = "wire2d"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
+    parser = argparse.ArgumentParser(description="CT image parameters")
+    parser.add_argument(
+        "-n",
+        "--nonlinearity",
+        choices=["wire", "siren", "mfn", "relu", "posenc", "gauss"],
+        type=str,
+        help="Name of nonlinearity",
+        default="wire",
+    )
+    args = parser.parse_args()
+
+    nonlin = args.nonlinearity
     niters = 5000  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate.
 
@@ -52,7 +64,11 @@ if __name__ == "__main__":
     thetas = torch.tensor(np.linspace(0, 180, nmeas, dtype=np.float32)).cuda()
 
     # Create phantom
-    img = cv2.imread("data/chest.png").astype(np.float32)[..., 1]
+    image_name_ext = "chest.png"
+    image_name = image_name_ext.split(".")[0]
+    image_path = os.path.join("data", image_name_ext)
+
+    img = cv2.imread(image_path).astype(np.float32)[..., 1]
     img = utils.normalize(img, True)
     [H, W] = img.shape
     imten = torch.tensor(img)[None, None, ...].cuda()
@@ -140,7 +156,7 @@ if __name__ == "__main__":
             tbar.refresh()
 
             psnr2 = utils.psnr(img, img_estim_cpu)
-            ssim2 = ssim_func(img, img_estim_cpu)
+            ssim2 = ssim_func(img, img_estim_cpu)   
 
             if os.getenv("WANDB_LOG") in ["true", "True", True]:
                 xp.log({"loss": loss, "psnr": psnr2, "ssim": ssim2})
@@ -177,3 +193,13 @@ if __name__ == "__main__":
         model.state_dict(),
         os.path.join(os.getenv("MODEL_SAVE_PATH"), "ct", f"{nonlin}_{nmeas}.pth"),
     )
+
+    plt.imshow(img_estim_cpu)
+    plt.savefig(
+        os.path.join(
+            os.getenv("RESULTS_SAVE_PATH"), "ct", f"{nonlin}_{nmeas}.png"
+        )
+    )
+
+    print("saving the CT image on WANDB")
+    wandb.log({f"{nonlin}_ct": [wandb.Image(img_estim_cpu, caption=f"Ct image {nonlin}")]})

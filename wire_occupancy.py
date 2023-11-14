@@ -29,8 +29,21 @@ from modules import models
 from modules import utils
 from modules import volutils
 
+import argparse
+
 if __name__ == "__main__":
-    nonlin = "wire"  # type of nonlinearity, 'wire', 'siren', 'mfn', 'relu', 'posenc', 'gauss'
+    parser = argparse.ArgumentParser(description="Occupancy parameters")
+    parser.add_argument(
+        "-n",
+        "--nonlinearity",
+        choices=["wire", "siren", "mfn", "relu", "posenc", "gauss"],
+        type=str,
+        help="Name of nonlinearity",
+        default="wire",
+    )
+    args = parser.parse_args()
+    nonlin = args.nonlinearity
+
     niters = 200  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate
     expname = "thai_statue"  # Volume to load
@@ -48,7 +61,7 @@ if __name__ == "__main__":
     maxpoints = int(2e5)  # Batch size
 
     if os.getenv("WANDB_LOG") in ["true", "True", True]:
-        run_name = f'wire_occupancy__{str(time.time()).replace(".", "_")}'
+        run_name = f'{nonlin}_occupancy__{str(time.time()).replace(".", "_")}'
         xp = wandb.init(
             name=run_name, project="pracnet", resume="allow", anonymous="allow"
         )
@@ -227,4 +240,9 @@ if __name__ == "__main__":
             "occupancy",
             "%s.pth" % nonlin,
         ),
+    )
+
+    print("saving the image on WANDB")
+    wandb.log(
+        {f"{nonlin}_occupancy": [wandb.Image(best_img, caption="Occupancy reuslt.")]}
     )
