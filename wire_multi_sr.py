@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     image_name_ext = "kodak.png"
     image_name = image_name_ext.split(".")[0]
-    image_path = os.path.join("data", image_name)
+    image_path = os.path.join("data", image_name_ext)
     # Read image
     im = cv2.resize(
         plt.imread(image_path),
