@@ -242,7 +242,7 @@ if __name__ == "__main__":
         ),
     )
 
-    print("saving the image on WANDB")
-    wandb.log(
-        {f"{nonlin}_occupancy": [wandb.Image(best_img, caption="Occupancy reuslt.")]}
-    )
+    # print("saving the image on WANDB")
+    # wandb.log(
+    #     {f"{nonlin}_occupancy": [wandb.Image(best_img, caption="Occupancy reuslt.")]}
+    # )
