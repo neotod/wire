@@ -83,15 +83,17 @@ if __name__ == "__main__":
     hidden_layers = 2  # Number of hidden layers in the MLP
     hidden_features = 256  # Number of hidden units per layer
 
-    if os.getenv("WANDB_LOG") in ["true", "True", True]:
-        run_name = f'wire_multi_sr__{str(time.time()).replace(".", "_")}'
-        xp = wandb.init(
-            name=run_name, project="pracnet", resume="allow", anonymous="allow"
-        )
 
     image_name_ext = "kodak.png"
     image_name = image_name_ext.split(".")[0]
     image_path = os.path.join("data", image_name_ext)
+
+    if os.getenv("WANDB_LOG") in ["true", "True", True]:
+        run_name = f'{nonlin}_{image_name}_multi_sr__{str(time.time()).replace(".", "_")}'
+        xp = wandb.init(
+            name=run_name, project="pracnet", resume="allow", anonymous="allow"
+        )
+        
     # Read image
     im = cv2.resize(
         plt.imread(image_path),

@@ -74,7 +74,7 @@ if __name__ == "__main__":
     imten = torch.tensor(img)[None, None, ...].cuda()
 
     if os.getenv("WANDB_LOG") in ["true", "True", True]:
-        run_name = f'wire_ct__{str(time.time()).replace(".", "_")}'
+        run_name = f'{nonlin}_{image_name}_ct__{str(time.time()).replace(".", "_")}'
         xp = wandb.init(
             name=run_name, project="pracnet", resume="allow", anonymous="allow"
         )
@@ -156,7 +156,7 @@ if __name__ == "__main__":
             tbar.refresh()
 
             psnr2 = utils.psnr(img, img_estim_cpu)
-            ssim2 = ssim_func(img, img_estim_cpu)   
+            ssim2 = ssim_func(img, img_estim_cpu)
 
             if os.getenv("WANDB_LOG") in ["true", "True", True]:
                 xp.log({"loss": loss, "psnr": psnr2, "ssim": ssim2})
@@ -196,10 +196,10 @@ if __name__ == "__main__":
 
     plt.imshow(img_estim_cpu)
     plt.savefig(
-        os.path.join(
-            os.getenv("RESULTS_SAVE_PATH"), "ct", f"{nonlin}_{nmeas}.png"
-        )
+        os.path.join(os.getenv("RESULTS_SAVE_PATH"), "ct", f"{nonlin}_{nmeas}.png")
     )
 
     print("saving the CT image on WANDB")
-    wandb.log({f"{nonlin}_ct": [wandb.Image(img_estim_cpu, caption=f"Ct image {nonlin}")]})
+    wandb.log(
+        {f"{nonlin}_ct": [wandb.Image(img_estim_cpu, caption=f"Ct image {nonlin}")]}
+    )

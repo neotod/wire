@@ -61,7 +61,7 @@ if __name__ == "__main__":
     maxpoints = int(2e5)  # Batch size
 
     if os.getenv("WANDB_LOG") in ["true", "True", True]:
-        run_name = f'{nonlin}_occupancy__{str(time.time()).replace(".", "_")}'
+        run_name = f'{nonlin}_{expname}_occupancy__{str(time.time()).replace(".", "_")}'
         xp = wandb.init(
             name=run_name, project="pracnet", resume="allow", anonymous="allow"
         )
