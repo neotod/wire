@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
 import os
-import sys
 from tqdm import tqdm
-import importlib
 import time
 from dotenv import load_dotenv
 

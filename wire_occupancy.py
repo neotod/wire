@@ -2,11 +2,8 @@
 
 import os
 import sys
-import glob
 import tqdm
-import importlib
 import time
-import pdb
 import copy
 import wandb
 from dotenv import load_dotenv
@@ -246,27 +243,8 @@ if __name__ == "__main__":
     )
 
     print("saving the mesh on WANDB")
-
-    mat_data = scipy.io.loadmat(mat_save_path)
-
-    vertices = mat_data['vertices']
-    faces = mat_data['faces']
-
-    triangles = np.array(tripy.earclip(vertices, faces))
-
-    vertex_properties = [('x', 'float32'), ('y', 'float32'), ('z', 'float32')]
-    face_properties = [('vertex_indices', 'int32', 'int32')]
-
-    mesh = PlyData([
-        PlyElement.describe(vertices, 'vertex', vertex_properties),
-        PlyElement.describe(triangles, 'face', face_properties)
-    ])
-    mesh_save_path = os.path.join(
-        os.getenv("RESULTS_SAVE_PATH"), f"{expname}_{nonlin}_mesh.ply"
-    )
-    mesh.write(mesh_save_path)
+    np.save(mat_save_path, best_img)
 
     artifact = wandb.Artifact('3d_mesh', type='mesh')
-    artifact.add_file(mesh_save_path, f"{expname}_{nonlin}_mesh.ply")
-
+    artifact.add_file(mat_save_path)
     wandb.log_artifact(artifact)
