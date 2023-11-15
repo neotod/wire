@@ -77,7 +77,12 @@ if __name__ == "__main__":
 
     im = utils.normalize(plt.imread(img_path).astype(np.float32), True)
     im = cv2.resize(im, None, fx=1 / 2, fy=1 / 2, interpolation=cv2.INTER_AREA)
-    H, W, _ = im.shape
+
+    if len(im.shape) == 2:
+      H, W = im.shape
+      D = 1
+    else:
+      H, W, D = im.shape
 
     if os.getenv("WANDB_LOG") in ["true", "True", True]:
         run_name = (
@@ -106,7 +111,7 @@ if __name__ == "__main__":
     model = models.get_INR(
         nonlin=nonlin,
         in_features=2,
-        out_features=3,
+        out_features=D,
         hidden_features=hidden_features,
         hidden_layers=hidden_layers,
         first_omega_0=omega0,
@@ -136,8 +141,8 @@ if __name__ == "__main__":
     X, Y = torch.meshgrid(x, y, indexing="xy")
     coords = torch.hstack((X.reshape(-1, 1), Y.reshape(-1, 1)))[None, ...]
 
-    gt = torch.tensor(im).cuda().reshape(H * W, 3)[None, ...]
-    gt_noisy = torch.tensor(im_noisy).cuda().reshape(H * W, 3)[None, ...]
+    gt = torch.tensor(im).cuda().reshape(H * W, D)[None, ...]
+    gt_noisy = torch.tensor(im_noisy).cuda().reshape(H * W, D)[None, ...]
 
     mse_array = torch.zeros(niters, device="cuda")
     mse_loss_array = torch.zeros(niters, device="cuda")
@@ -177,8 +182,8 @@ if __name__ == "__main__":
         with torch.no_grad():
             mse_loss_array[epoch] = ((gt_noisy - rec) ** 2).mean().item()
             mse_array[epoch] = ((gt - rec) ** 2).mean().item()
-            im_gt = gt.reshape(H, W, 3).permute(2, 0, 1)[None, ...]
-            im_rec = rec.reshape(H, W, 3).permute(2, 0, 1)[None, ...]
+            im_gt = gt.reshape(H, W, D).permute(2, 0, 1)[None, ...]
+            im_rec = rec.reshape(H, W, D).permute(2, 0, 1)[None, ...]
 
             psnrval = -10 * torch.log10(mse_array[epoch])
             tbar.set_description("%.1f" % psnrval)
@@ -189,7 +194,7 @@ if __name__ == "__main__":
 
         scheduler.step()
 
-        imrec = rec[0, ...].reshape(H, W, 3).detach().cpu().numpy()
+        imrec = rec[0, ...].reshape(H, W, D).detach().cpu().numpy()
 
         cv2.imshow("Reconstruction", imrec[..., ::-1])
         cv2.waitKey(1)
