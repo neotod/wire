@@ -40,8 +40,16 @@ if __name__ == "__main__":
         help="Name of nonlinearity",
         default="wire",
     )
+    parser.add_argument(
+        "-i",
+        "--input_image",
+        type=str,
+        help="Input image name",
+        default="parrot.png",
+    )
     args = parser.parse_args()
     nonlin = args.nonlinearity
+    img_name_ext = args.input_image
 
     niters = 2000  # Number of SGD iterations
     learning_rate = 5e-3  # Learning rate.
@@ -64,7 +72,6 @@ if __name__ == "__main__":
 
     # Read image and scale. A scale of 0.5 for parrot image ensures that it
     # fits in a 12GB GPU
-    img_name_ext = "parrot.png"
     img_name = img_name_ext.split(".")[0]
     img_path = os.path.join("data", img_name_ext)
 
