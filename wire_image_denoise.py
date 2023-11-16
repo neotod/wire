@@ -74,7 +74,7 @@ if __name__ == "__main__":
     img_path = os.path.join("data", img_name_ext)
 
     im = utils.normalize(plt.imread(img_path).astype(np.float32), True)
-    im = cv2.resize(im, None, fx=1 / 2, fy=1 / 2, interpolation=cv2.INTER_AREA)
+    # im = cv2.resize(im, None, fx=1 / 2, fy=1 / 2, interpolation=cv2.INTER_AREA)
 
     if len(im.shape) == 2:
       H, W = im.shape
